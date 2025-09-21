@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+Pillow
+SQLAlchemy
+psycopg2-binary
+python-dotenv
+python-jose[cryptography]
+boto3
+celery
+redis
+slowapi
+structlog
+prometheus-fastapi-instrumentator
+sentry-sdk
+httpx
