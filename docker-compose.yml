@@ -1,21 +1,9 @@
-version: "3.9"
+version: '3'
 services:
-  api:
-    build: ./server
-    env_file: ./server/.env
-    ports: ["8000:8000"]
-    depends_on: [redis]
-  worker:
-    build: ./server
-    command: bash worker.sh
-    env_file: ./server/.env
-    depends_on: [redis]
-  redis:
-    image: redis:7
-    ports: ["6379:6379"]
-  flower:
-    image: mher/flower
-    environment:
-      - FLOWER_BROKER=redis://redis:6379/0
-    ports: ["5555:5555"]
-    depends_on: [redis]
+  web:
+    build: .
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
