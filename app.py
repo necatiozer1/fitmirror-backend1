@@ -1,31 +1,33 @@
-from fastapi import FastAPI, UploadFile, File, Depends
-from sqlalchemy.orm import Session
-from models import Base
-from database import engine, get_db
-import crud
+import os
+import uuid
+from pathlib import Path
+from fastapi import FastAPI, UploadFile, File
+from fastapi.responses import JSONResponse
 
-# FastAPI uygulaması
 app = FastAPI()
 
-# Veritabanı tablolarını oluştur
-Base.metadata.create_all(bind=engine)
+# Storage klasörü
+STORAGE = Path("./storage")
+AVATARS = STORAGE / "avatars"
+AVATARS.mkdir(parents=True, exist_ok=True)
 
-# Sağlık kontrol endpoint
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-# Avatar yükleme
-@app.post("/upload-avatar/")
-async def upload_avatar(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    return crud.save_avatar(file, db)
+@app.post("/upload-avatar")
+async def upload_avatar(file: UploadFile = File(...)):
+    try:
+        # Benzersiz dosya adı üretelim
+        ext = os.path.splitext(file.filename)[-1]
+        filename = f"{uuid.uuid4()}{ext}"
+        filepath = AVATARS / filename
 
-# Kıyafet yükleme
-@app.post("/upload-garment/")
-async def upload_garment(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    return crud.save_garment(file, db)
+        # Dosyayı kaydet
+        with open(filepath, "wb") as buffer:
+            buffer.write(await file.read())
 
-# Kıyafet deneme
-@app.get("/try-on/{user_id}")
-def try_on(user_id: int, db: Session = Depends(get_db)):
-    return crud.try_on(user_id, db)
+        return {"status": "success", "filename": filename}
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
