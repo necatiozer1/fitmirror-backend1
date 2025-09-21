@@ -1,23 +1,29 @@
 import os
-import uuid
 from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 
+# FastAPI uygulaması
 app = FastAPI()
 
-# Klasörler
-UPLOAD_DIR = Path("./uploads")
-AVATAR_DIR = UPLOAD_DIR / "avatars"
-GARMENT_DIR = UPLOAD_DIR / "garments"
+# CORS (Xcode'dan API çağrılarını engellemesin diye)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-AVATAR_DIR.mkdir(parents=True, exist_ok=True)
-GARMENT_DIR.mkdir(parents=True, exist_ok=True)
+# Klasörleri hazırla
+BASE_DIR = Path(__file__).resolve().parent
+STORAGE = BASE_DIR / "storage"
+AVATARS = STORAGE / "avatars"
+GARMENTS = STORAGE / "garments"
 
-# Statik dosya servisleri (ön izleme için)
-app.mount("/static/avatars", StaticFiles(directory=AVATAR_DIR), name="avatars")
-app.mount("/static/garments", StaticFiles(directory=GARMENT_DIR), name="garments")
+os.makedirs(AVATARS, exist_ok=True)
+os.makedirs(GARMENTS, exist_ok=True)
 
 # Sağlık kontrolü
 @app.get("/health")
@@ -27,34 +33,21 @@ def health():
 # Avatar yükleme
 @app.post("/upload-avatar")
 async def upload_avatar(file: UploadFile = File(...)):
-    try:
-        ext = os.path.splitext(file.filename)[-1]
-        filename = f"{uuid.uuid4()}{ext}"
-        file_path = AVATAR_DIR / filename
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        return {"status": "success", "filename": filename}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+    file_path = AVATARS / file.filename
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+    return {"message": "Avatar uploaded successfully", "filename": file.filename}
 
 # Kıyafet yükleme
 @app.post("/upload-garment")
 async def upload_garment(file: UploadFile = File(...)):
-    try:
-        ext = os.path.splitext(file.filename)[-1]
-        filename = f"{uuid.uuid4()}{ext}"
-        file_path = GARMENT_DIR / filename
-        with open(file_path, "wb") as buffer:
-            buffer.write(await file.read())
-        return {"status": "success", "filename": filename}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+    file_path = GARMENTS / file.filename
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
+    return {"message": "Garment uploaded successfully", "filename": file.filename}
 
-# Kıyafet listeleme
-@app.get("/garments")
+# Kıyafetleri listeleme
+@app.get("/list-garments")
 def list_garments():
-    try:
-        files = [f"/static/garments/{f.name}" for f in GARMENT_DIR.iterdir() if f.is_file()]
-        return {"status": "success", "garments": files}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"status": "error", "detail": str(e)})
+    garments = [f.name for f in GARMENTS.glob("*") if f.is_file()]
+    return garments
