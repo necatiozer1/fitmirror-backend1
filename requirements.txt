@@ -1,6 +1,6 @@
-fastapi==0.117.0
-uvicorn==0.30.6
-sqlalchemy==2.0.43
-psycopg2-binary==2.9.9
-python-multipart==0.0.9
-Pillow==10.2.0
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-multipart
+pillow
