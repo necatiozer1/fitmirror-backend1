@@ -1,9 +1,21 @@
-from sqlalchemy import Column, Integer, String, LargeBinary
-from database import Base
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import declarative_base
 
-class File(Base):
-    __tablename__ = "files"
+Base = declarative_base()
 
+class User(Base):
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, unique=True, index=True)
-    content = Column(LargeBinary)
+    name = Column(String, index=True)
+
+class Avatar(Base):
+    __tablename__ = "avatars"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    file_path = Column(String)
+
+class Garment(Base):
+    __tablename__ = "garments"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    file_path = Column(String)
