@@ -1,10 +1,9 @@
-from sqlalchemy import Column, String, Boolean
-from .database import Base
+from sqlalchemy import Column, Integer, String, LargeBinary
+from database import Base
 
-class User(Base):
-    __tablename__ = "users"
+class File(Base):
+    __tablename__ = "files"
 
-    uid = Column(String, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=True)
-    is_subscriber = Column(Boolean, default=False)
-    has_used_free_hq = Column(Boolean, default=False)
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, unique=True, index=True)
+    content = Column(LargeBinary)
