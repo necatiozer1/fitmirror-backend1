@@ -10,7 +10,17 @@ from pydantic import BaseModel
 from PIL import Image
 
 from sqlalchemy.orm import Session
-from . import models, database, crud
+from fastapi import FastAPI
+from models import Base
+from database import engine
+import crud
+
+app = FastAPI()
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 # Veritabanı tablolarını oluştur
 models.Base.metadata.create_all(bind=database.engine)
