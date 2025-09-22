@@ -1,14 +1,14 @@
 import os
+import replicate
 import uuid
-from pathlib import Path
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from PIL import Image
+from dotenv import load_dotenv
+
+# env.txt dosyasını yükle
+load_dotenv("env.txt")
 
 app = FastAPI()
-
-# CORS ayarı
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,75 +17,31 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Klasörler
-STORAGE = Path("./storage").resolve()
-AVATARS = STORAGE / "avatars"
-GARMENTS = STORAGE / "garments"
-RESULTS = STORAGE / "results"
-for folder in [STORAGE, AVATARS, GARMENTS, RESULTS]:
-    folder.mkdir(parents=True, exist_ok=True)
-
-# Sağlık testi
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-# Avatar yükle
-@app.post("/upload-avatar")
-async def upload_avatar(file: UploadFile = File(...)):
-    filename = f"avatar_{uuid.uuid4().hex}.jpg"
-    filepath = AVATARS / filename
-    with open(filepath, "wb") as buffer:
-        buffer.write(await file.read())
-    return {"message": "Avatar uploaded successfully", "filename": filename}
-
-# Kıyafet yükle
-@app.post("/upload-garment")
-async def upload_garment(file: UploadFile = File(...)):
-    filename = f"garment_{uuid.uuid4().hex}.jpg"
-    filepath = GARMENTS / filename
-    with open(filepath, "wb") as buffer:
-        buffer.write(await file.read())
-    return {"message": "Garment uploaded successfully", "filename": filename}
-
-# Kıyafetleri listele
-@app.get("/list-garments")
-def list_garments():
-    garments = [f.name for f in GARMENTS.glob("*.jpg")]
-    return garments
-
-# Avatar + kıyafeti birleştir
+# ========== AI Try-On Endpoint ==========
 @app.post("/try-on")
-async def try_on():
-    try:
-        avatar_files = list(AVATARS.glob("*.jpg"))
-        garment_files = list(GARMENTS.glob("*.jpg"))
+async def try_on(avatar: UploadFile = File(...), garment: UploadFile = File(...)):
+    # Klasörler oluştur
+    os.makedirs("avatars", exist_ok=True)
+    os.makedirs("garments", exist_ok=True)
 
-        if not avatar_files or not garment_files:
-            return {"error": "Avatar veya kıyafet bulunamadı"}
+    # Dosya yolları
+    avatar_path = f"avatars/{uuid.uuid4()}_{avatar.filename}"
+    garment_path = f"garments/{uuid.uuid4()}_{garment.filename}"
 
-        avatar_path = avatar_files[-1]  # son yüklenen avatar
-        garment_path = garment_files[-1]  # son yüklenen kıyafet
+    # Dosyaları kaydet
+    with open(avatar_path, "wb") as f:
+        f.write(await avatar.read())
+    with open(garment_path, "wb") as f:
+        f.write(await garment.read())
 
-        avatar = Image.open(avatar_path).convert("RGBA")
-        garment = Image.open(garment_path).convert("RGBA")
+    # Replicate modelini çağır
+    output = replicate.run(
+        "yisol/tryondiffusion:db21e61269a6d9a74c72114d8351fbd882f7b151c9a2cf47d6f5c01b21ccf8b9",
+        input={
+            "person_img": open(avatar_path, "rb"),
+            "garment_img": open(garment_path, "rb")
+        }
+    )
 
-        # Kıyafeti boyutlandır ve avatarın üzerine koy
-        garment = garment.resize((avatar.width, int(avatar.height / 2)))
-        avatar.paste(garment, (0, avatar.height // 2), garment)
-
-        result_filename = f"result_{uuid.uuid4().hex}.png"
-        result_path = RESULTS / result_filename
-        avatar.save(result_path)
-
-        return {"message": "Try-on başarılı", "filename": result_filename}
-    except Exception as e:
-        return {"error": str(e)}
-
-# Sonuç dosyalarını göster
-@app.get("/results/{filename}")
-async def get_result(filename: str):
-    filepath = RESULTS / filename
-    if filepath.exists():
-        return FileResponse(filepath)
-    return {"error": "Dosya bulunamadı"}
+    # Çıktıyı döndür
+    return {"result": output}
